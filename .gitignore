@@ -114,5 +114,6 @@ Karl_example_CNNs
 box-data
 .idea
 h5_files/
-parent_match_outputs/
+outputs/
 inputs/
+
