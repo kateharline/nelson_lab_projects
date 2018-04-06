@@ -113,6 +113,6 @@ Karl_example_CNNs
 # data that doesn't need to be tracked here
 box-data
 .idea
-/h5_files
-/parent_match_outputs
-/inputs
+h5_files/
+parent_match_outputs/
+inputs/

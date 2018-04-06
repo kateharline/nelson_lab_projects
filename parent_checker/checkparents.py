@@ -1,6 +1,7 @@
 import pandas as pd
 import datetime
 import numpy as np
+import os
 
 import parentvis as vis
 
@@ -40,11 +41,11 @@ def col_to_snp_dict(line, lines):
     '''
     return dict(zip(lines['rs#'], lines[line]))
 
-def dict_truth(par_dict, line_dict, b73_dict, b73_out):
+def dict_truth(line_dict, par_dict, b73_dict, b73_out):
     truths_dict = {}
 
     for key, value in line_dict.items():
-
+        truths_dict[key] = value is par_dict[key] and not b73_dict[key]
 
     return truths_dict
 
@@ -57,23 +58,17 @@ def compare(line, parents, b73_out):
     :return: dict of float percentage of snps for each parent { parent : % snps }
     '''
     percent_dict = {}
-    truth_array = []
 
     pars = list(parents)
 
-    b73_truth = make_truth(line, col_to_snp_dict('B73', pars))
-
     for p in pars:
-        truth = make_truth(line, col_to_snp_dict(p, pars))
+        truth = dict_truth(line, col_to_snp_dict(p, pars), col_to_snp_dict('B73', pars), b73_out)
 
-        if b73_out:
-            truth = b73_truth_out(truth, b73_truth)
-
-        percent_parent = sum(truth) / len(truth)
+        percent_parent = sum(list(truth.values())) / len(list(truth.values()))
         percent_dict[p] = percent_parent
-        truth_array.append(truth)
 
-    return percent_dict, truth_array
+
+    return percent_dict
 
 def compares(lines, parents, b73_out=False, predicted_parents=None):
     '''
@@ -88,20 +83,15 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
     lins = list(lines)
 
     for l in lins:
-        line_percents, line_truths = compare(col_to_snp_dict(l, lines), parents, b73_out)
+        line_percents = compare(col_to_snp_dict(l, lines), parents, b73_out)
 
         parents_percents[l] = line_percents
         percent_values = list(line_percents.values())
         max_percent_locs = np.argmax(np.array(percent_values))
 
-        pars = list(line_percents.keys())
+        pars = np.array(line_percents.keys())
 
-        max_parents[l] =
-
-        # # make a graph?
-        # takes too long, but would be cool one day
-        # if predicted_parents[l] != max_parent:
-        #     vis.subplotting(line_truths, pars, l)
+        max_parents[l] = pars[max_percent_locs]
 
     return parents_percents
 
@@ -110,6 +100,8 @@ def main():
     date = str(datetime.date.today())+'_'
 
     filename = 'unimputed_full'
+
+    os.chdir('')
 
     lines_file = filename + '.hmp.txt'
     lines_df = pd.read_csv(lines_file, sep="\t")
