@@ -46,10 +46,10 @@ def dict_truth(line_dict, par_dict, b73_dict, b73_out):
 
     for key, value in line_dict.items():
         if b73_out:
-            truths_dict[key] = value is par_dict[key] and not b73_dict[key]
+            truths_dict[key] = value is par_dict[key] and value is not b73_dict[key]
         else:
             truths_dict[key] = value is par_dict[key]
-            
+
     return truths_dict
 
 
@@ -61,18 +61,25 @@ def compare(line, parents, b73_out):
     :param b73_out: bool take what isn't b73
     :return: dict of float percentage of snps for each parent { parent : % snps }
     '''
-    percent_dict = {}
+    percent_dict = {'null':0}
+    max_parents = ['null']
 
     pars = list(parents)
 
     for p in pars:
         truth = dict_truth(line, col_to_snp_dict(p, parents), col_to_snp_dict('B73', parents), b73_out)
 
-        percent_parent = sum(list(truth.values())) / len(list(truth.values()))
+        percent_parent = list(truth.values()).count(True) / len(list(truth.values()))
         percent_dict[p] = percent_parent
 
+        if percent_parent > percent_dict[max_parents[0]]:
+            max_parents = [p]
+        if percent_parent == percent_dict[max_parents[0]]:
+            max_parents.append(p)
 
-    return percent_dict
+    del percent_dict['null']
+
+    return percent_dict, max_parents
 
 def compares(lines, parents, b73_out=False, predicted_parents=None):
     '''
@@ -87,17 +94,12 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
     lins = list(lines)
 
     for l in lins:
-        line_percents = compare(col_to_snp_dict(l, lines), parents, b73_out)
+        line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), parents, b73_out)
 
         parents_percents[l] = line_percents
-        percent_values = list(line_percents.values())
-        max_percent_locs = np.argmax(np.array(percent_values))
+        max_parents[l] = line_max_parents
 
-        pars = np.array(line_percents.keys())
-
-        max_parents[l] = pars[max_percent_locs]
-
-    return parents_percents
+    return parents_percents, max_parents
 
 
 def main():
@@ -132,13 +134,11 @@ def main():
 
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
-    parent_not_b73 = compares(lines, founders, True, pred_par_dict)
+    parent_not_b73, parent_maxs = compares(lines, founders, True, pred_par_dict)
     b73_out_df = pd.DataFrame(parent_not_b73)
-    b73_out_df.to_csv(date + filename + '_parent_percents_b73_out.csv')
+    b73_out_df['max_parent_matches'] = parent_maxs
+    b73_out_df.to_csv(date + filename + '_parent_percents_and_maxs_b73_out.csv')
 
-    # pick minimum from the dataframe
-    max_ids = b73_out_df.idxmax()
-    max_ids.to_csv(date + filename + '_parent_matches.csv')
 
     # email when finished
     msg = 'done'
