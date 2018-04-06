@@ -45,8 +45,11 @@ def dict_truth(line_dict, par_dict, b73_dict, b73_out):
     truths_dict = {}
 
     for key, value in line_dict.items():
-        truths_dict[key] = value is par_dict[key] and not b73_dict[key]
-
+        if b73_out:
+            truths_dict[key] = value is par_dict[key] and not b73_dict[key]
+        else:
+            truths_dict[key] = value is par_dict[key]
+            
     return truths_dict
 
 
@@ -54,7 +57,8 @@ def compare(line, parents, b73_out):
     '''
     for a given line compare its snps to each of a set of parents
     :param line: list or array str of snp calls
-    :param parents: list of lists of parent array of str snp calls
+    :param parents: dataframe of str snp calls
+    :param b73_out: bool take what isn't b73
     :return: dict of float percentage of snps for each parent { parent : % snps }
     '''
     percent_dict = {}
@@ -62,7 +66,7 @@ def compare(line, parents, b73_out):
     pars = list(parents)
 
     for p in pars:
-        truth = dict_truth(line, col_to_snp_dict(p, pars), col_to_snp_dict('B73', pars), b73_out)
+        truth = dict_truth(line, col_to_snp_dict(p, parents), col_to_snp_dict('B73', parents), b73_out)
 
         percent_parent = sum(list(truth.values())) / len(list(truth.values()))
         percent_dict[p] = percent_parent
@@ -99,9 +103,9 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
 def main():
     date = str(datetime.date.today())+'_'
 
-    filename = 'unimputed_full'
+    filename = 'unimputed'
 
-    os.chdir('')
+    os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
 
     lines_file = filename + '.hmp.txt'
     lines_df = pd.read_csv(lines_file, sep="\t")
@@ -125,6 +129,8 @@ def main():
 
     predicted_par_df = pd.read_csv(pred_par_file, sep="\t")
     pred_par_dict = dict(zip(predicted_par_df['NIL line'], predicted_par_df['Syngenta called Founder']))
+
+    os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
     parent_not_b73 = compares(lines, founders, True, pred_par_dict)
     b73_out_df = pd.DataFrame(parent_not_b73)
