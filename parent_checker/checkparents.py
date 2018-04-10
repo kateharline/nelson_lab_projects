@@ -2,6 +2,7 @@ import pandas as pd
 import datetime
 import numpy as np
 import os
+import re
 
 import parentvis as vis
 
@@ -52,13 +53,30 @@ def dict_truth(line_dict, par_dict, b73_dict, b73_out):
 
     return truths_dict
 
+def percent_by_chrom(truth):
+    '''
+    calculate the percent truths for each chrom
+    :param truth: dict str snp : bool matches parent and not b73
+    :return: float percent value max for chromosome with max
+    '''
+    chrom_percents = np.array((10))
 
-def compare(line, parents, b73_out):
+    for key, value in truth:
+        chrom = re.compile('(?:S)(\d)(?:_)')
+        if value:
+            chrom_percents[chrom] += 1
+
+    max_percent = chrom_percents.argmax()
+
+    return max_percent
+
+def compare(line, parents, b73_out, by_chrom):
     '''
     for a given line compare its snps to each of a set of parents
     :param line: list or array str of snp calls
     :param parents: dataframe of str snp calls
     :param b73_out: bool take what isn't b73
+    :param by_chrom: bool choose the max parent match by chromosome or total
     :return: dict of float percentage of snps for each parent { parent : % snps }
     '''
     percent_dict = {'null':0}
@@ -69,7 +87,10 @@ def compare(line, parents, b73_out):
     for p in pars:
         truth = dict_truth(line, col_to_snp_dict(p, parents), col_to_snp_dict('B73', parents), b73_out)
 
-        percent_parent = list(truth.values()).count(True) / len(list(truth.values()))
+        if by_chrom:
+            percent_parent = percent_by_chrom(truth)
+        else:
+            percent_parent = list(truth.values()).count(True) / len(list(truth.values()))
         percent_dict[p] = percent_parent
 
         if percent_parent > percent_dict[max_parents.split(' ')[0]]:
@@ -81,7 +102,7 @@ def compare(line, parents, b73_out):
 
     return percent_dict, max_parents
 
-def compares(lines, parents, b73_out=False, predicted_parents=None):
+def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=True):
     '''
     make comparison between parent and line snps per lines
     :param lines: dataframe of lines and str snp calls
@@ -94,7 +115,7 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
     lins = list(lines)[:-2]
 
     for i, l in enumerate(lins):
-        line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), parents, b73_out)
+        line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), parents, b73_out, by_chrom)
 
         parents_percents[l] = line_percents
         max_parents[l] = line_max_parents
