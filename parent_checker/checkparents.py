@@ -62,7 +62,7 @@ def compare(line, parents, b73_out):
     :return: dict of float percentage of snps for each parent { parent : % snps }
     '''
     percent_dict = {'null':0}
-    max_parents = ['null']
+    max_parents = 'null '
 
     pars = list(parents)
 
@@ -72,10 +72,10 @@ def compare(line, parents, b73_out):
         percent_parent = list(truth.values()).count(True) / len(list(truth.values()))
         percent_dict[p] = percent_parent
 
-        if percent_parent > percent_dict[max_parents[0]]:
-            max_parents = [p]
-        if percent_parent == percent_dict[max_parents[0]]:
-            max_parents.append(p)
+        if percent_parent > percent_dict[max_parents.split(' ')[0]]:
+            max_parents = str(p)+' '
+        elif percent_parent == percent_dict[max_parents.split(' ')[0]]:
+            max_parents += str(p)+' '
 
     del percent_dict['null']
 
@@ -91,13 +91,14 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
     parents_percents = {}
     max_parents = {}
 
-    lins = list(lines)
+    lins = list(lines)[:-2]
 
-    for l in lins:
+    for i, l in enumerate(lins):
         line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), parents, b73_out)
 
         parents_percents[l] = line_percents
         max_parents[l] = line_max_parents
+        print('running '+str(l)+' line '+str(i)+' of '+str(len(lins)-1))
 
     return parents_percents, max_parents
 
@@ -105,7 +106,7 @@ def compares(lines, parents, b73_out=False, predicted_parents=None):
 def main():
     date = str(datetime.date.today())+'_'
 
-    filename = 'unimputed'
+    filename = '10NN_CU_with_founders_full'
 
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
 
@@ -115,7 +116,7 @@ def main():
     founders_file = '10NN_CU_with_founders_full.hmp.txt'
     founders_df = pd.read_csv(founders_file, sep="\t")
 
-    lines = lines_df.loc[:, '10NN0065:D25PAACXX:3:250184947':'10NN0805:C25A5ACXX:7:250185015']
+    lines = lines_df.loc[:, '10NN0001':'10NN0013']
     lines['rs#'] = lines_df.loc[:, 'rs#']
     founders = founders_df.loc[:, 'B73':'Tzi8']
     founders['rs#'] = founders_df.loc[:, 'rs#']
@@ -135,9 +136,13 @@ def main():
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
     parent_not_b73, parent_maxs = compares(lines, founders, True, pred_par_dict)
-    b73_out_df = pd.DataFrame(parent_not_b73)
-    b73_out_df['max_parent_matches'] = parent_maxs
-    b73_out_df.to_csv(date + filename + '_parent_percents_and_maxs_b73_out.csv')
+    b73_out_df = pd.DataFrame.from_dict(parent_not_b73, orient='index')
+
+    parent_maxs = pd.DataFrame.from_dict(parent_maxs, orient='index')
+
+    b73_out_df['max_parents'] = parent_maxs[0]
+
+    b73_out_df.to_csv('testing'+ date + filename + '_parent_percents_and_maxs_b73_out.csv')
 
 
     # email when finished
