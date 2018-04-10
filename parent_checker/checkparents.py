@@ -53,27 +53,36 @@ def dict_truth(line_dict, par_dict, b73_dict, b73_out):
 
     return truths_dict
 
-def percent_by_chrom(truth):
+def percent_by_chrom(truth, parent, line):
     '''
     calculate the percent truths for each chrom
     :param truth: dict str snp : bool matches parent and not b73
+    :param parent:
+    :param line:
     :return: float percent value max for chromosome with max
     '''
     chrom_percents = np.array((10))
 
-    for key, value in truth:
+    for key, value in truth.items():
         chrom = re.compile('(?:S)(\d)(?:_)')
         if value:
             chrom_percents[chrom] += 1
 
     max_percent = chrom_percents.argmax()
 
+    percent_df = pd.DataFrame()
+    percent_df['chromosome'] = np.arange(9)
+    percent_df['percent_parent_match'] = chrom_percents
+
+    percent_df.to_csv('percent_'+str(parent)+'_in_'+str(line)+'by_chrom.csv')
+
     return max_percent
 
-def compare(line, parents, b73_out, by_chrom):
+def compare(line, line_name, parents, b73_out, by_chrom):
     '''
     for a given line compare its snps to each of a set of parents
     :param line: list or array str of snp calls
+    :param line_name: str line
     :param parents: dataframe of str snp calls
     :param b73_out: bool take what isn't b73
     :param by_chrom: bool choose the max parent match by chromosome or total
@@ -88,7 +97,7 @@ def compare(line, parents, b73_out, by_chrom):
         truth = dict_truth(line, col_to_snp_dict(p, parents), col_to_snp_dict('B73', parents), b73_out)
 
         if by_chrom:
-            percent_parent = percent_by_chrom(truth)
+            percent_parent = percent_by_chrom(truth, p, line_name)
         else:
             percent_parent = list(truth.values()).count(True) / len(list(truth.values()))
         percent_dict[p] = percent_parent
@@ -115,7 +124,7 @@ def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=Tru
     lins = list(lines)[:-2]
 
     for i, l in enumerate(lins):
-        line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), parents, b73_out, by_chrom)
+        line_percents, line_max_parents = compare(col_to_snp_dict(l, lines), l, parents, b73_out, by_chrom)
 
         parents_percents[l] = line_percents
         max_parents[l] = line_max_parents
@@ -138,6 +147,7 @@ def main():
     founders_df = pd.read_csv(founders_file, sep="\t")
 
     lines = lines_df.loc[:, '10NN0001':'10NN0013']
+    take_max_percent = True
     lines['rs#'] = lines_df.loc[:, 'rs#']
     founders = founders_df.loc[:, 'B73':'Tzi8']
     founders['rs#'] = founders_df.loc[:, 'rs#']
@@ -156,14 +166,17 @@ def main():
 
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
-    parent_not_b73, parent_maxs = compares(lines, founders, True, pred_par_dict)
+    parent_not_b73, parent_maxs = compares(lines, founders, True, pred_par_dict, take_max_percent)
     b73_out_df = pd.DataFrame.from_dict(parent_not_b73, orient='index')
 
     parent_maxs = pd.DataFrame.from_dict(parent_maxs, orient='index')
 
     b73_out_df['max_parents'] = parent_maxs[0]
 
-    b73_out_df.to_csv('testing'+ date + filename + '_parent_percents_and_maxs_b73_out.csv')
+    if take_max_percent:
+        b73_out_df.to_csv('testing'+ date + filename + '_parent_maxs_bychrom.csv')
+    else:
+        b73_out_df.to_csv('testing' + date + filename + '_parent_maxs_total.csv')
 
 
     # email when finished
