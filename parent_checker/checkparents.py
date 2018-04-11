@@ -61,17 +61,23 @@ def percent_by_chrom(truth, parent, line):
     :param line:
     :return: float percent value max for chromosome with max
     '''
-    chrom_percents = np.array((10))
+    chrom_percents = np.zeros(11)
+    snps_per_chrom = np.zeros(11)
 
     for key, value in truth.items():
-        chrom = re.compile('(?:S)(\d)(?:_)')
+        chrom = int(re.match('(?:S)(\d+)(?:_)', key)[1])
+        snps_per_chrom[chrom] += 1
         if value:
             chrom_percents[chrom] += 1
-
-    max_percent = chrom_percents.argmax()
+    print('chrom percents '+str(chrom_percents))
+    print('snps per chrom '+str(snps_per_chrom))
+    # TODO make this a percentage calculation not total
+    chrom_percents = chrom_percents / snps_per_chrom
+    max_percent = chrom_percents.max()
+    print('chrom percents divided '+str(chrom_percents))
 
     percent_df = pd.DataFrame()
-    percent_df['chromosome'] = np.arange(9)
+    percent_df['chromosome'] = np.arange(11)
     percent_df['percent_parent_match'] = chrom_percents
 
     percent_df.to_csv('percent_'+str(parent)+'_in_'+str(line)+'by_chrom.csv')
@@ -128,7 +134,7 @@ def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=Tru
 
         parents_percents[l] = line_percents
         max_parents[l] = line_max_parents
-        print('running '+str(l)+' line '+str(i)+' of '+str(len(lins)-1))
+        print('running '+str(l)+' line '+str(i+1)+' of '+str(len(lins)-1))
 
     return parents_percents, max_parents
 
