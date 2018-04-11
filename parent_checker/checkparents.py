@@ -71,8 +71,8 @@ def percent_by_chrom(truth, parent, line):
             chrom_percents[chrom] += 1
     print('chrom percents '+str(chrom_percents))
     print('snps per chrom '+str(snps_per_chrom))
-    # TODO make this a percentage calculation not total
-    chrom_percents = chrom_percents / snps_per_chrom
+
+    chrom_percents = chrom_percents / len(list(truth.values()))
     max_percent = chrom_percents.max()
     print('chrom percents divided '+str(chrom_percents))
 
@@ -80,7 +80,8 @@ def percent_by_chrom(truth, parent, line):
     percent_df['chromosome'] = np.arange(11)
     percent_df['percent_parent_match'] = chrom_percents
 
-    percent_df.to_csv('percent_'+str(parent)+'_in_'+str(line)+'by_chrom.csv')
+    # for testing
+    # percent_df.to_csv('percent_'+str(parent)+'_in_'+str(line)+'by_chrom.csv')
 
     return max_percent
 
@@ -178,11 +179,14 @@ def main():
     parent_maxs = pd.DataFrame.from_dict(parent_maxs, orient='index')
 
     b73_out_df['max_parents'] = parent_maxs[0]
+    # TODO display which chrom result came from
+    # TODO decide what output csvs should be
 
+    preamble = 'testing_divSnpTotal_'
     if take_max_percent:
-        b73_out_df.to_csv('testing'+ date + filename + '_parent_maxs_bychrom.csv')
+        b73_out_df.to_csv(preamble + date + filename + '_parent_maxs_bychrom.csv')
     else:
-        b73_out_df.to_csv('testing' + date + filename + '_parent_maxs_total.csv')
+        b73_out_df.to_csv(preamble + date + filename + '_parent_maxs_total.csv')
 
 
     # email when finished
