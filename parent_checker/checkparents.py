@@ -74,7 +74,7 @@ def percent_by_chrom(truth, parent, line):
     max_percent = chrom_percents.max()
     tots = chrom_percents.sum()
 
-    return max_percent, tots
+    return chrom_percents, max_percent, tots
 
 def adjust_max(max_parents, percent_dict, p):
     '''
@@ -104,31 +104,32 @@ def compare(line, line_name, parents, b73_out, by_chrom):
     tot_percent_dict = {'null':0}
     tot_max_parents = 'null '
 
+    chrom_max_dict = {'null': 0}
     chrom_percent_dict = {'null': 0}
     chrom_max_parents = 'null '
+
     tots_from_chroms = {}
 
-    pars = list(parents)
+    pars = list(parents)[:-1]
 
     for p in pars:
         truth = dict_truth(line, col_to_snp_dict(p, parents), col_to_snp_dict('B73', parents), b73_out)
 
-        chrom_percent_dict[p], tots = percent_by_chrom(truth, p, line_name)
+        chrom_percent_dict[p], chrom_max_dict[p], tots_from_chroms[p] = percent_by_chrom(truth, p, line_name)
         tot_percent_dict[p] = list(truth.values()).count(True) / len(list(truth.values()))
 
-        chrom_max_parents = adjust_max(chrom_max_parents, chrom_percent_dict, p)
+        chrom_max_parents = adjust_max(chrom_max_parents, chrom_max_dict, p)
         tot_max_parents = adjust_max(tot_max_parents, tot_percent_dict, p)
-
-        tots_from_chroms[p] = tots
-
-    chrom_percent_df = pd.DataFrame.from_dict(chrom_percent_dict)
-    chrom_percent_df['tots_from_chroms'] = tots_from_chroms
-    chrom_percent_df.to_csv('max_chrom_percents_for_' + line_name)
 
     del tot_percent_dict['null']
     del chrom_percent_dict['null']
+    del chrom_max_dict['null']
 
-    return tot_percent_dict, tot_max_parents, chrom_percent_dict, chrom_max_parents
+    # percent by parent by chrom
+    chrom_percent_df = pd.DataFrame(chrom_percent_dict)
+    # chrom_percent_df.to_csv(line_name + '_by_chrom_percents.csv')
+
+    return tot_percent_dict, tot_max_parents, chrom_max_dict, chrom_max_parents
 
 def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=True):
     '''
@@ -146,10 +147,10 @@ def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=Tru
 
     for i, l in enumerate(lins):
         tot_parents_percents[l], tot_max_parents[l], chrom_parents_percents[l], chrom_max_parents[l] = compare(col_to_snp_dict(l, lines), l, parents, b73_out, by_chrom)
-        print('running '+str(l)+' line '+str(i+1)+' of '+str(len(lins)-1))
+        print('running '+str(l)+' line '+str(i+1)+' of '+str(len(lins)))
 
     percents_df = pd.DataFrame.from_dict(tot_parents_percents)
-    percents_df.to_csv('tot_percents_summary.csv')
+    # percents_df.to_csv('all_chrom_percents.csv')
 
     return tot_max_parents, chrom_max_parents
 
@@ -167,17 +168,11 @@ def main():
     founders_file = '10NN_CU_with_founders_full.hmp.txt'
     founders_df = pd.read_csv(founders_file, sep="\t")
 
-    lines = lines_df.loc[:, '10NN0001':'10NN0005']
+    lines = lines_df.loc[:, '10NN0001':'B73']
     take_max_percent = True
     lines['rs#'] = lines_df.loc[:, 'rs#']
     founders = founders_df.loc[:, 'B73':'Tzi8']
     founders['rs#'] = founders_df.loc[:, 'rs#']
-
-    # percent snp identities between founders and lines
-    #
-    # parent_percent_df = compares(lines, founders)
-    # df = pd.DataFrame(parent_percent_df)
-    # df.to_csv(date + filename + '_parent_percents.csv')
 
     # parent predicted for each line : parent
     pred_par_file = '10NN_CU_full_parent_matches.txt'
@@ -188,20 +183,21 @@ def main():
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
     tot_max_parents, chrom_max_parents = compares(lines, founders, True, pred_par_dict, take_max_percent)
-    predicted_par_df['tot_match'] = tot_max_parents
-    predicted_par_df['chrom_match'] = chrom_max_parents
+    predicted_par_df['tot_match'] = predicted_par_df['NIL line'].map(tot_max_parents)
+    predicted_par_df['chrom_match'] = predicted_par_df['NIL line'].map(chrom_max_parents)
+    predicted_par_df.to_csv('parentChecker_resultsSummary.csv')
 
     # email when finished
-    msg = 'done'
-
-    # Send the message
-    server = smtplib.SMTP('smtp.gmail.com', 587)  # port 465 or 587
-    server.ehlo()
-    server.starttls()
-    server.ehlo()
-    server.login('harhark8@gmail.com', 'ubomujaxmhprtuwf')
-    server.sendmail('harhark8@gmail.com', 'kh694@cornell.edu', msg)
-    server.close()
+    # msg = 'done'
+    #
+    # # Send the message
+    # server = smtplib.SMTP('smtp.gmail.com', 587)  # port 465 or 587
+    # server.ehlo()
+    # server.starttls()s
+    # server.ehlo()
+    # server.login('harhark8@gmail.com', 'ubomujaxmhprtuwf')
+    # server.sendmail('harhark8@gmail.com', 'kh694@cornell.edu', msg)
+    # server.close()
 
 
 if __name__ == '__main__':
