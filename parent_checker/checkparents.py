@@ -71,6 +71,9 @@ def percent_by_chrom(truth, parent, line):
             chrom_percents[chrom] += 1
 
     chrom_percents = chrom_percents / len(list(truth.values()))
+
+    # Todo remove s0 from analysis
+
     max_percent = chrom_percents.max()
     tots = chrom_percents.sum()
 
@@ -154,25 +157,33 @@ def compares(lines, parents, b73_out=False, predicted_parents=None, by_chrom=Tru
 
     return tot_max_parents, chrom_max_parents
 
+def open_founders_and_nils(founders_file, nils_file):
+    '''
+    open and select entries from founders and nils files
+    :param founders_file: str
+    :param nils_file: str
+    :return: datafraames for founders and lines with snp data (strs)
+    '''
+    os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
+    lines_file = nils_file
+    lines_df = pd.read_csv(lines_file, sep="\t")
+
+    founders_df = pd.read_csv(founders_file, sep="\t")
+
+    lines = lines_df.loc[:, '10NN0001':'B73']
+
+    lines['rs#'] = lines_df.loc[:, 'rs#']
+    founders = founders_df.loc[:, ['B73', 'CML103', 'CML228', 'CML322', 'CML333', 'CML52', 'CML69', 'CML277', 'CML247', 'Ki11',
+                                   'Ki3', 'M162W', 'Mo17', 'Mo18W', 'NC350', 'NC358', 'Oh43', 'Tx303', 'Tzi8']]
+    founders['rs#'] = founders_df.loc[:, 'rs#']
+
+    return founders, lines
+
 
 def main():
     date = str(datetime.date.today())+'_'
 
-    filename = '10NN_CU_with_founders_full'
-
-    os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
-
-    lines_file = filename + '.hmp.txt'
-    lines_df = pd.read_csv(lines_file, sep="\t")
-
-    founders_file = '10NN_CU_with_founders_full.hmp.txt'
-    founders_df = pd.read_csv(founders_file, sep="\t")
-
-    lines = lines_df.loc[:, '10NN0001':'B73']
-    take_max_percent = True
-    lines['rs#'] = lines_df.loc[:, 'rs#']
-    founders = founders_df.loc[:, 'B73':'Tzi8']
-    founders['rs#'] = founders_df.loc[:, 'rs#']
+    lines, founders = open_founders_and_nils('10NN_CU_with_founders_full.hmp.txt', '10NN_CU_with_founders_full.hmp.txt')
 
     # parent predicted for each line : parent
     pred_par_file = '10NN_CU_full_parent_matches.txt'
@@ -182,7 +193,9 @@ def main():
 
     os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/outputs')
 
+    take_max_percent = True
     tot_max_parents, chrom_max_parents = compares(lines, founders, True, pred_par_dict, take_max_percent)
+
     predicted_par_df['tot_match'] = predicted_par_df['NIL line'].map(tot_max_parents)
     predicted_par_df['chrom_match'] = predicted_par_df['NIL line'].map(chrom_max_parents)
     predicted_par_df.to_csv('parentChecker_resultsSummary.csv')
