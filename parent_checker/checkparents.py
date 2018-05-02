@@ -164,7 +164,7 @@ def open_founders_and_nils(founders_file, nils_file):
     :param nils_file: str
     :return: datafraames for founders and lines with snp data (strs)
     '''
-    os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
+    # os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
     lines_file = nils_file
     lines_df = pd.read_csv(lines_file, sep="\t")
 
