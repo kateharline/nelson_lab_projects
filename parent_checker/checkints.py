@@ -107,6 +107,21 @@ def check_ints(lines, founders, intrs):
 
     return int_tops, top_percents
 
+def add_compare_column(output, output_key, new_col_df, new_col_key, col_to_take, new_col_name):
+    '''
+    add columns to dataframe to make comparisons across scripts
+    :param output: df output from this script
+    :param output_key: str column name used to search other df
+    :param new_col_df: df adding column from
+    :param new_col_key: str column key name in that df
+    :param col_to_take: str column name to add
+    :param new_col_name: str name of column in output df
+    :return: that df with the added column
+    '''
+    syn_par_dict = dict(zip(new_col_df[new_col_key], new_col_df[col_to_take]))
+    output[new_col_name] = output[output_key].map(syn_par_dict)
+
+    return output
 
 def main():
     # open snp data
@@ -116,16 +131,13 @@ def main():
     elif 'Darwin' in platform.platform():
         os.chdir('/Users/kateharline/Desktop/nelson_lab/parent_checker/inputs')
 
-    founders, lines = cp.open_founders_and_nils('10NN_CML103_lines_with_founders_filtered.hmp.txt', '10NN_CML103_lines_with_founders_filtered.hmp.txt')
+    founders, lines = cp.open_founders_and_nils('10NN_CU_with_founders_full.hmp.txt', '10NN_CU_with_founders_full.hmp.txt')
 
-    intrs_df = pd.read_csv('int_test.txt', sep="\t")
+    intrs_df = pd.read_csv('10NN_introgressions.txt', sep="\t")
     pos_ints = founders['rs#'].tolist()
 
-    pred_par_file = '10NN_CU_full_parent_matches.txt'
-    predicted_par_df = pd.read_csv(pred_par_file, sep="\t")
-
-    other_predictions_file = 'parentChecker_resultsSummary.csv'
-    other_predictions_df = pd.read_csv(other_predictions_file)
+    predictions_file = 'parentChecker_resultsSummary.csv'
+    predictions_df = pd.read_csv(predictions_file)
 
     # todo select out possible rs#s
 
@@ -136,12 +148,16 @@ def main():
 
     intrs = clean_ints(intrs_df, pos_ints)
     output = pd.DataFrame()
-    output['top_parent(s)'], output['percent_match'] = check_ints(lines, founders, intrs)
+    output['int_call'], output['percent_match'] = check_ints(lines, founders, intrs)
 
-    # compare syngenta calls
+    # compare other calls
+    output['line'] = intrs['line']
+    output = add_compare_column(output, 'line', predictions_df, 'NIL line', 'Syngenta called Founder', 'Syngenta_call')
+    output = add_compare_column(output, 'line', predictions_df, 'NIL line', 'tot_match', 'tot_call')
+    output = add_compare_column(output, 'line', predictions_df, 'NIL line', 'chrom_match', 'chrom_call')
 
-    pred_par_dict = dict(zip(predicted_par_df['NIL line'], predicted_par_df['Syngenta called Founder']))
-    output['Syngenta_call'] = intrs['line'].map(pred_par_dict)
+    # make in nice order
+    output = output[['line', 'Syngenta_call', 'int_call', 'percent_match', 'chrom_call', 'tot_call']]
 
     # todo display/save output
     output.to_csv('intr_call_summary.csv')
