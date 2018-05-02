@@ -32,18 +32,15 @@ def convert_to_rs_ranges(chromosomes, starts, ends, pos_intrs):
     for i in range(len(starts)):
         rs = []
         for j in range(len(pos_intrs)):
-            chrom = re.match('(?:S)(\d+)', pos_intrs[j])
-            if chromosomes[j] == chrom:
+            chrom = re.search('(?:S)(\d+)', pos_intrs[j]).group(1)
+            if chromosomes[i] == int(chrom):
                 snp_rs = pos_intrs[j]
                 # check intr
-                position = re.match('(?:_)(\d+)', snp_rs)
+                position = int(re.search('(?:_)(\d+)', snp_rs).group(1))
                 if position >= starts[i] and position <= ends[i]:
                     rs.append(snp_rs)
 
-            # update chrom
-            chrom = re.match('(?:S)(\d+)', pos_intrs[i])
         rs_s.append(rs)
-
 
     return rs_s
 
@@ -83,20 +80,19 @@ def check_ints(lines, founders, intrs):
     for i, intr in enumerate(intrs_points):
 
         line = intrs.loc[i, 'line']
-        line_snps = cp.col_to_snp_dict(line, lines.loc[:, intr])
+        line_snps = cp.col_to_snp_dict(line, lines.loc[lines['rs#'].isin(intr)])
         current_match_percent = 0.0
         current_match = ''
 
         parent_dict = {}
         for parent in parents:
-            print(intr.dtype)
-            parent_snps = cp.col_to_snp_dict(parent, founders.loc[:, intr])
+            parent_snps = cp.col_to_snp_dict(parent, founders.loc[founders['rs#'].isin(intr)])
             truth = cp.dict_truth(line_snps, parent_snps, b73_snps, True)
             parent_match_percent = percent_match(truth)
-            intr_percents[parent] = parent_match_percent
 
             if parent_match_percent > current_match_percent:
                 current_match = parent
+                current_match_percent = parent_match_percent
             elif parent_match_percent == current_match_percent:
                 current_match += ' '+str(parent)
             parent_dict[parent] = parent_match_percent
@@ -106,7 +102,7 @@ def check_ints(lines, founders, intrs):
         intr_percents[i] = parent_dict
 
     intr_percents = pd.DataFrame(intr_percents)
-    intr_percents.to_csv('parent_percents_for_intrs_.csv')
+    intr_percents.to_csv('parent_percents_for_intrs.csv')
 
 
     return int_tops, top_percents
@@ -123,8 +119,13 @@ def main():
     founders, lines = cp.open_founders_and_nils('10NN_CML103_lines_with_founders_filtered.hmp.txt', '10NN_CML103_lines_with_founders_filtered.hmp.txt')
 
     intrs_df = pd.read_csv('int_test.txt', sep="\t")
-    print(founders.head(10))
     pos_ints = founders['rs#'].tolist()
+
+    pred_par_file = '10NN_CU_full_parent_matches.txt'
+    predicted_par_df = pd.read_csv(pred_par_file, sep="\t")
+
+    other_predictions_file = 'parentChecker_resultsSummary.csv'
+    other_predictions_df = pd.read_csv(other_predictions_file)
 
     # todo select out possible rs#s
 
@@ -138,10 +139,9 @@ def main():
     output['top_parent(s)'], output['percent_match'] = check_ints(lines, founders, intrs)
 
     # compare syngenta calls
-    pred_par_file = '10NN_CU_full_parent_matches.txt'
-    predicted_par_df = pd.read_csv(pred_par_file, sep="\t")
+
     pred_par_dict = dict(zip(predicted_par_df['NIL line'], predicted_par_df['Syngenta called Founder']))
-    intrs['Syngenta_call'] = intrs['line'].map(pred_par_dict)
+    output['Syngenta_call'] = intrs['line'].map(pred_par_dict)
 
     # todo display/save output
     output.to_csv('intr_call_summary.csv')
